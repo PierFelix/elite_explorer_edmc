@@ -1,8 +1,8 @@
 import json
-import urllib.request
+import requests
+from requests.compat import quote_plus
 
-from urllib.parse import quote
-
+HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 
 # Exploration status variables 
 FULLYSCANNED = 4 # system is logged, amount of bodies is recorded and all bodies scanned
@@ -13,12 +13,9 @@ MISSING = 0      # system is NOT known to Spansh
 
 
 def get_nearby_stars(system_name):
-    html_safe_system_name = quote(system_name)
-    my_url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={html_safe_system_name}"
-    my_headers = {"User-Agent": "Elite Explorer - Python"}
-    my_request = urllib.request.Request(my_url, data=None, headers=my_headers)
-    contents = urllib.request.urlopen(my_request, timeout=30).read()
-    return json.loads(contents.strip())
+    url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={quote_plus(system_name)}"
+    res = requests.get(url, timeout=30, headers=HTTP_HEADERS)
+    return res.json()
 
 
 def get_exploration_status(SystemAddress: int):
@@ -28,11 +25,9 @@ def get_exploration_status(SystemAddress: int):
     :param int SystemAddress: id64 of the system (SystemAddress in journal)
     :return: json format of Spansh data dump
     """
-    headers = {"User-Agent": "Elite Explorer - Python"}
-    spansh_url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
-    spansh_request = urllib.request.Request(url=spansh_url, data=None, headers=headers)
-    contents = urllib.request.urlopen(spansh_request, timeout=30).read()
-    return json.loads(contents.strip())
+    url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
+    res = requests.get(url, timeout=30, headers=HTTP_HEADERS)
+    return res.json()
 
 
 def exploration_state_check(spansh_dump) -> list[int]:
