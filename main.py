@@ -4,6 +4,14 @@ import urllib.request
 from urllib.parse import quote
 
 
+# Exploration status variables 
+FULLYSCANNED = 4 # system is logged, amount of bodies is recorded and all bodies scanned
+PARTIALSCAN = 3  # system is logged, amount of bodies is recorded and some bodies scanned/ not all scanned
+UNKNOWNSCAN = 2  # system is logged, amount of bodies is NOT recorded but some bodies scanned scanned
+LOGGED = 1       # system is logged, amount of bodies is NOT recorded, no bodies scnned (system is only known by name and possibly cords)
+MISSING = 0      # system is NOT known to Spansh
+
+
 def get_nearby_stars(system_name):
     html_safe_system_name = quote(system_name)
     my_url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={html_safe_system_name}"
@@ -25,6 +33,44 @@ def get_exploration_status(SystemAddress: int):
     spansh_request = urllib.request.Request(url=spansh_url, data=None, headers=headers)
     contents = urllib.request.urlopen(spansh_request, timeout=30).read()
     return json.loads(contents.strip())
+
+
+def exploration_state_check(spansh_dump) -> list[int]:
+    """
+    Checks if the amount of fully scanned bodies matches the total bodyCount of the system. 
+
+    :param spansh_dump: json of the Spansh system dump
+    :return: [status, scanned bodies, bodyCount]
+    :rtype: list[int]
+    """
+    scannedBodies: int = 0
+    bodyCount: int = 0
+    status: int
+
+    if spansh_dump and spansh_dump.get("system"):
+        bodyCount: int = spansh_dump.get("system").get("bodyCount")
+        if spansh_dump.get("system").get("bodies"):
+            for body in spansh_dump.get("system").get("bodies"):
+                if body.get("type") in ("Planet", "Star"):
+                    scannedBodies += 1
+
+        if scannedBodies > 0:
+            if bodyCount:
+                if bodyCount == scannedBodies:
+                    status = FULLYSCANNED
+                else:
+                    status = PARTIALSCAN
+            else:
+                status = UNKNOWNSCAN
+        elif spansh_dump.get("system").get("name"):
+            status = LOGGED
+        else:
+            # fallback option (should not be possible)
+            status = MISSING
+    else:
+        status = MISSING
+
+    return [status, scannedBodies, bodyCount]
 
 
 if __name__ == "__main__":
