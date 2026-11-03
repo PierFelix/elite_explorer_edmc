@@ -1,4 +1,5 @@
 import json
+
 import requests
 from requests.compat import quote_plus
 
@@ -11,11 +12,15 @@ UNKNOWNSCAN = 2  # system is logged, amount of bodies is NOT recorded but some b
 LOGGED = 1       # system is logged, amount of bodies is NOT recorded, no bodies scnned (system is only known by name and possibly cords)
 MISSING = 0      # system is NOT known to Spansh
 
+def send_http_request(url, headers = HTTP_HEADERS, timeout: float = 30):
+    return requests.get(url, headers=headers, timeout=timeout)
 
 def get_nearby_stars(system_name):
     url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={quote_plus(system_name)}"
-    res = requests.get(url, timeout=30, headers=HTTP_HEADERS)
-    return res.json()
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
 
 
 def get_exploration_status(SystemAddress: int):
@@ -26,8 +31,10 @@ def get_exploration_status(SystemAddress: int):
     :return: json format of Spansh data dump
     """
     url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
-    res = requests.get(url, timeout=30, headers=HTTP_HEADERS)
-    return res.json()
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
 
 
 def exploration_state_check(spansh_dump) -> list[int]:
