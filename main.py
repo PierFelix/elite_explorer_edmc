@@ -95,13 +95,45 @@ if __name__ == "__main__":
                 f"LY: {system['distance']} Name: {system['name']} Bodies: {system['bodyCount']}"
             )
 
+    # journal_dir = os.path.expanduser(
+    #     r"~\Saved Games\Frontier Developments\Elite Dangerous"
+    # )
     journal_dir = os.path.expanduser(
-        r"~\Saved Games\Frontier Developments\Elite Dangerous"
+        r"~/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous/"
     )
-    # This sometimes picks up the wrong journal if we start before the game does.
-    # TODO FIXME
+
     latest_file = get_latest_journal(journal_dir)
-    print(f"Reading latest journal: {latest_file}")
+    print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
+
+    if latest_file:
+        with open(latest_file, "rb") as f:
+            try:
+                f.seek(-2, os.SEEK_END)
+                while f.read(1) != b'\n':
+                    f.seek(-2, os.SEEK_CUR)
+            except OSError:
+                f.seek(0)
+            
+            try:
+                line = f.readline()
+                data = json.loads(line.strip())
+                event_type = data.get("event")
+                if event_type == "Shutdown":
+                    ed_running = False
+                    print("Waiting for Elite:Dangerous to start.")
+                else:
+                    ed_running = True
+
+            except json.JSONDecodeError:
+                    ed_running = True
+        
+        while not ed_running:
+            time.sleep(5)
+            new_latest_file = get_latest_journal(journal_dir)
+            if new_latest_file != latest_file:
+                latest_file = new_latest_file
+                ed_running = True
+                print("Detected new journal file!")
 
     if latest_file:
         with open(latest_file, "r", encoding="utf-8") as f:
