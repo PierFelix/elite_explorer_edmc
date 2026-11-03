@@ -13,6 +13,20 @@ def get_nearby_stars(system_name):
     return json.loads(contents.strip())
 
 
+def get_exploration_status(SystemAddress: int):
+    """
+    Requests a data dump of a system from Spansh
+
+    :param int SystemAddress: id64 of the system (SystemAddress in journal)
+    :return: json format of Spansh data dump
+    """
+    headers = {"User-Agent": "Elite Explorer - Python"}
+    spansh_url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
+    spansh_request = urllib.request.Request(url=spansh_url, data=None, headers=headers)
+    contents = urllib.request.urlopen(spansh_request, timeout=30).read()
+    return json.loads(contents.strip())
+
+
 if __name__ == "__main__":
     import glob
     import os
