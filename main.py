@@ -6,12 +6,10 @@ from urllib.parse import quote
 
 def get_nearby_stars(system_name):
     html_safe_system_name = quote(system_name)
-    my_url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&systemName={html_safe_system_name}"
+    my_url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={html_safe_system_name}"
     my_headers = {"User-Agent": "Elite Explorer - Python"}
-    print(f"{my_url}")
-
     my_request = urllib.request.Request(my_url, data=None, headers=my_headers)
-    contents = urllib.request.urlopen(my_request).read()
+    contents = urllib.request.urlopen(my_request, timeout=30).read()
     return json.loads(contents.strip())
 
 
