@@ -229,11 +229,11 @@ if __name__ == "__main__":
                                             if e.response.status_code != 404:
                                                 print(f"Got an {e.response.status_code}!\nReason: {e.response.reason}")
                                             else:
-                                                print(f"{system_name} is unknown to Spansh!")
+                                                print(f"{system_name} is not known by Spansh!")
                                                 unexplored[system_name] = {}
 
 
-                            print("Finished checking nearby systems")        
+                            print("Finished checking nearby systems with Spansh")        
                                 
                         case "FSDTarget":
                             if nearby:
