@@ -56,7 +56,7 @@ def exploration_state_check(spansh_dump) -> list[int]:
     """
     scannedBodies: int = 0
     bodyCount: int = 0
-    status: int
+    status = MISSING
 
     if spansh_dump and spansh_dump.get("system"):
         bodyCount: int = spansh_dump.get("system").get("bodyCount")
@@ -75,11 +75,6 @@ def exploration_state_check(spansh_dump) -> list[int]:
                 status = UNKNOWNSCAN
         elif spansh_dump.get("system").get("name"):
             status = LOGGED
-        else:
-            # fallback option (should not be possible)
-            status = MISSING
-    else:
-        status = MISSING
 
     return [status, scannedBodies, bodyCount]
 
