@@ -111,11 +111,11 @@ if __name__ == "__main__":
     if latest_file:
         with open(latest_file, "rb") as f:
             try:
-                f.seek(-2, os.SEEK_END)
+                _ = f.seek(-2, os.SEEK_END)
                 while f.read(1) != b'\n':
-                    f.seek(-2, os.SEEK_CUR)
+                    _ = f.seek(-2, os.SEEK_CUR)
             except OSError:
-                f.seek(0)
+                _ = f.seek(0)
             
             try:
                 line = f.readline()
@@ -152,6 +152,7 @@ if __name__ == "__main__":
         print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
         with open(latest_file, "r", encoding="utf-8") as f:
             # Move to the end of the file to read only new events (tail)
+            _ = f.seek(0, os.SEEK_END)
             
             nearby = {}
             unexplored = {}
