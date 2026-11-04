@@ -4,6 +4,7 @@ import requests
 from requests.compat import quote_plus
 
 CLEAR_UNKNOWNS = True
+SHOW_PARTIALLY_EXPLORED = True
 
 HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 
@@ -156,6 +157,7 @@ if __name__ == "__main__":
             
             nearby = {}
             unexplored = {}
+            partially_explored = {}
             jump_system = ""
 
             while True:
@@ -201,6 +203,35 @@ if __name__ == "__main__":
                                 system_name = system_info["name"]
                                 nearby[system_name] = {}
 
+                                if SHOW_PARTIALLY_EXPLORED:
+                                    id64 = system_info["id64"]
+                                    if id64 and id64 >= 0:
+                                        nearby[system_name]["id64"] = id64
+                                        try:
+                                            explo_status = get_exploration_status(id64)
+
+                                            explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
+                                            nearby[system_name]["explored"] = explored
+                                            nearby[system_name]["scannedBodies"] = scannedBodies
+                                            nearby[system_name]["bodyCount"] = bodyCount
+
+                                            match explored:
+                                                case 0:
+                                                    print(f"New unexplored (Spansh): {system_name}")
+                                                    unexplored[system_name] = {}
+                                                case 1 | 2 | 3:
+                                                    scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
+                                                    total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
+                                                    print(f"New partially explored: {system_name}")
+                                                    partially_explored[system_name]  = {}
+                                        
+                                        except requests.exceptions.HTTPError as e:
+                                            if e.response.status_code != 404:
+                                                print(f"Got an {e.response.status_code}!\nReason: {e.response.reason}")
+                                            else:
+                                                print(f"{system_name} is unknown to Spansh!")
+                                                unexplored[system_name] = {}
+
 
                             print("Finished checking nearby systems")        
                                 
@@ -224,6 +255,19 @@ if __name__ == "__main__":
                                     print("\nFully Unexplored Systems:")
                                     print("\n".join(unexplored.keys()))
 
+                                # Opening Codex
+                                case "Codex":
+                                    print("\nFully Unexplored Systems:")
+                                    print("\n".join(unexplored.keys()))
+                                    print("\nPartially Explored Systems:")
+                                    if SHOW_PARTIALLY_EXPLORED:
+                                        for k in partially_explored.keys():
+                                            scanned = str(nearby[k]["scannedBodies"]).rjust(3, "0") if nearby[k]["scannedBodies"] else "???"
+                                            total = str(nearby[k]["bodyCount"]).rjust(3, "0") if nearby[k]["bodyCount"] else "???"
+                                            print(f"[{scanned}/{total}] {k}")
+                                    else:
+                                        print("Checking partially explored is disabled!")
+                                    
                                 case _:
                                     continue
 
