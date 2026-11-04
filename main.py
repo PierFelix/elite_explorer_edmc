@@ -217,6 +217,16 @@ if __name__ == "__main__":
                             if data["JumpType"] == "Hyperspace":
                                 jump_system = data["StarSystem"]
 
+                        case "Music":
+                            match data["MusicTrack"]:
+                                # Opening Powerplay or Galnet News
+                                case "GalacticPowers":
+                                    print("\nFully Unexplored Systems:")
+                                    print("\n".join(unexplored.keys()))
+
+                                case _:
+                                    continue
+
                         case "Shutdown":
                             exit()
                         
