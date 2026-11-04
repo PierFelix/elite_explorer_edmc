@@ -3,6 +3,8 @@ import json
 import requests
 from requests.compat import quote_plus
 
+CLEAR_UNKNOWNS = True
+
 HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 
 # Exploration status variables 
@@ -15,15 +17,22 @@ MISSING = 0      # system is NOT known to Spansh
 def send_http_request(url, headers = HTTP_HEADERS, timeout: float = 30):
     return requests.get(url, headers=headers, timeout=timeout)
 
-def get_nearby_stars(system_name):
+def get_nearby_systems(system_name) -> dict:
     url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={quote_plus(system_name)}"
     res = send_http_request(url)
     if res.ok:
         return res.json()
     raise requests.exceptions.HTTPError(response=res)
 
+def get_nearby_systems_cords(x: float, y: float, z: float) -> dict:
+    url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&x={quote_plus(str(x))}&y={quote_plus(str(y))}&z={quote_plus(str(z))}"
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
 
-def get_exploration_status(SystemAddress: int):
+
+def get_exploration_status(SystemAddress: int) -> dict:
     """
     Requests a data dump of a system from Spansh
 
@@ -148,7 +157,10 @@ if __name__ == "__main__":
         print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
         with open(latest_file, "r", encoding="utf-8") as f:
             # Move to the end of the file to read only new events (tail)
-            f.seek(0, os.SEEK_END)
+            
+            nearby = {}
+            unexplored = {}
+            jump_system = ""
 
             while True:
                 line = f.readline()
@@ -158,24 +170,62 @@ if __name__ == "__main__":
 
                 try:
                     data = json.loads(line.strip())
-                    event_type = data.get("event")
-                    # ignore_list = [ 'Scan','FSSBodySignals', 'Music', 'FSDTarget' ]
-                    if event_type == "Location":
-                        print(
-                            f"Event: {event_type} | Star System {data['StarSystem']} | StarPos {data['StarPos']}"
-                        )
-                        nearby = get_nearby_stars(data["StarSystem"])
-                        better_print_nearby(nearby)
-                    elif event_type == "FSDJump":
-                        print(f"Event: {event_type} | Data: {data['StarSystem']}")
-                        nearby = get_nearby_stars(data["StarSystem"])
-                        better_print_nearby(nearby)
-                    # elif event_type in ignore_list:
-                    # continue
-                    elif event_type == "Shutdown":
-                        exit()
-                    else:
-                        # print(f"Event: {event_type} ")
-                        continue
+                    match data.get("event"):
+                        case "Location" | "FSDJump":
+                            
+                            # TODO Needs a better system that checks if it is more than 20 LYs away
+                            # Or just keep rechecking after each jump, will make spansg part slow...
+                            if CLEAR_UNKNOWNS:
+                                    unexplored.clear()
+                                    partially_explored.clear()
+                            
+                            x, y, z = data["StarPos"]
+
+                            edsm_nearby = {}
+                            tries = 0
+                            while not edsm_nearby:
+                                try:
+                                    edsm_nearby = get_nearby_systems_cords(x, y, z)
+                                except requests.exceptions.HTTPError as e:
+                                    print(f"Got an {e.response.status_code}!\nReason: {e.response.reason}")
+                                    if e.response.status_code != 503:
+                                        print("Skipping this instance")
+                                        nearby.clear()
+                                        break
+                                    elif tries < 5:
+                                        tries += 1
+                                        print(f"Will retry in 3 seconds... [{tries}/5]")
+                                        time.sleep(3)
+                                    else:
+                                        print("Max retries exceeded, skipping this system...")
+                                        nearby.clear()
+                                        break
+
+                            for system_info in edsm_nearby:
+                                system_name = system_info["name"]
+                                nearby[system_name] = {}
+
+
+                            print("Finished checking nearby systems")        
+                                
+                        case "FSDTarget":
+                            if nearby:
+                                system_name = data["Name"]
+                                if not system_name in nearby and not jump_system == system_name:
+                                    unexplored[system_name] = {}
+                                    print(f"{system_name} is not known by EDSM!")
+
+                        case "StartJump":
+                            # Jump can be more than 20 LY, meaning the system will never be
+                            # in the nearby list
+                            if data["JumpType"] == "Hyperspace":
+                                jump_system = data["StarSystem"]
+
+                        case "Shutdown":
+                            exit()
+                        
+                        case _:
+                            continue
+  
                 except json.JSONDecodeError:
                     pass
