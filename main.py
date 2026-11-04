@@ -103,7 +103,6 @@ if __name__ == "__main__":
     )
 
     latest_file = get_latest_journal(journal_dir)
-    print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
 
     if latest_file:
         with open(latest_file, "rb") as f:
@@ -135,7 +134,18 @@ if __name__ == "__main__":
                 ed_running = True
                 print("Detected new journal file!")
 
+    else:
+        print(f"Found no journals inside directory {journal_dir}")
+        ed_running = False
+        while not ed_running:
+            time.sleep(5)
+            latest_file = get_latest_journal(journal_dir)
+            if latest_file:
+                ed_running = True
+                print("Detected new journal file!")
+
     if latest_file:
+        print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
         with open(latest_file, "r", encoding="utf-8") as f:
             # Move to the end of the file to read only new events (tail)
             f.seek(0, os.SEEK_END)
