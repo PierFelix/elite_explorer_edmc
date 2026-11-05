@@ -35,6 +35,60 @@ if not logger.hasHandlers():
     logger_channel.setFormatter(logger_formatter)
     logger.addHandler(logger_channel)
 
+class EEMainUI(tk.Frame):
+    def __init__(self, parent: tk.Frame) -> None: # , container, gridrow
+        tk.Frame.__init__(self, parent)
+        self.parent = parent
+
+        self.visible = 1
+        self.systems_list_idx = 0
+        self.systems_list_txt = ["Unknown Systems", "Partially Known Systems"]
+
+        self.IMG_SWAP = tk.PhotoImage(
+            file=os.path.join(os.path.dirname(__file__), "assets", "swap.png")
+        )
+
+        current_row = 0
+        # frame = tk.Frame(self.parent)
+
+        sys_lis_frame = tk.Frame(self)
+        sys_lis_frame.grid(row=current_row)
+
+        systems_list = tk.Label(sys_lis_frame, text=f"{self.systems_list_txt[self.systems_list_idx]}")
+        systems_list.grid(row=0, column=1, sticky="N")
+
+        next_but = tk.Button(
+            sys_lis_frame, image=self.IMG_SWAP, width=14, height=14, borderwidth=0
+        )
+        next_but.grid(row=0, column=0, sticky=tk.NW, padx=2)
+        next_but.bind("<Button-1>", self.systems_list_swap)
+        # next_but.grid_remove()
+
+        current_row += 1
+
+        button = tk.Button(
+            self,
+            text="Count me",
+            # command=lambda: self.click_count.set(str(int(self.click_count.get()) + 1))
+        )
+        button.grid(row=current_row)
+        current_row += 1
+        tk.Label(self, text="Count:").grid(row=current_row, sticky=tk.W)
+
+    def set_visible(self, visible: int) -> None:
+        self.visible = visible
+        self.update()
+
+    def systems_list_swap(self, event) -> None:
+        self.systems_list_idx = 0 if self.systems_list_idx else 1
+        self.update()
+
+    def update_ui(self, event):
+        self.update()
+
+    def update(self):
+        pass
+
 class EliteExplorer():
     def __init__(self) -> None:
         self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
@@ -155,6 +209,9 @@ class EliteExplorer():
         :param parent: EDMC main window Tk
         :return: Our frame
         """
+        self.main_ui = EEMainUI(parent)
+        self.main_ui.set_visible(self.main_ui_visible.get())
+        return self.main_ui
 
     def journal_event(self, cmdrname: str, is_beta: bool, system: str, station: str, entry: dict, state: dict):
         match entry.get("event"):
