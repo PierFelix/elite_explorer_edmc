@@ -3,9 +3,6 @@ import json
 import requests
 from requests.compat import quote_plus
 
-CLEAR_UNKNOWNS = True
-SHOW_PARTIALLY_EXPLORED = True
-
 HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 
 # Exploration status variables 
@@ -84,6 +81,9 @@ if __name__ == "__main__":
     import glob
     import os
     import time
+
+    CLEAR_UNKNOWNS = True
+    SHOW_PARTIALLY_EXPLORED = True
 
     def get_latest_journal(log_path):
         list_of_files = glob.glob(os.path.join(log_path, "Journal.*.log"))
