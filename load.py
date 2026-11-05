@@ -1,11 +1,14 @@
 import logging
 import os
 
+import time
+
 import tkinter as tk
 import myNotebook as nb
 
 from config import appname, appversion, config
 
+from main import *
 
 
 # This could also be returned from plugin_start3()
@@ -32,14 +35,36 @@ if not logger.hasHandlers():
     logger_channel.setFormatter(logger_formatter)
     logger.addHandler(logger_channel)
 
-class EliteExplorer:
+class EliteExplorer():
     def __init__(self) -> None:
         self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
-        
+        self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
+        self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
+
+        self.unexplored = {}
+        self.nearby_systems = {}
+        self.partially_explored = {}
+        self.jump_system = ""
+
+        self.plugin_dir: str
+        self.main_ui: tk.Frame
+
 
     def on_load(self, plugin_dir: str) -> str:
-        logger.info(f"Loaded {PLUGIN_NAME}, located at dir {plugin_dir}")
+        self.plugin_dir = plugin_dir
+        logger.info(f'Loaded "{PLUGIN_NAME}", located at dir "{plugin_dir}"')
+        
+        # I don't know if there is an intended way for default config options...
+        if config.set('ee_clear_unknows', int(self.clear_unknows.get())) is None:
+            config.set('ee_clear_unknows', 1) 
+        if config.set('ee_partially_explored', int(self.show_partially_explored.get())) is None:
+            config.set('ee_partially_explored', 1) 
+        if config.set('ee_main_ui_visible', int(self.main_ui_visible.get())) is None:
+            config.set('ee_main_ui_visible', 1) 
+        if config.set('ee_enable_overlay', int(self.enable_overlay.get())) is None:
+            config.set('ee_enable_overlay', 0)        
+        
         return PLUGIN_NAME
     
     def on_unload(self) -> None:
@@ -63,18 +88,48 @@ class EliteExplorer:
         :return: The frame to add to the settings window
         """
         current_row = 0
-        frame = nb.Frame(parent)
+        frame: nb.Frame = nb.Frame(parent)
         
         self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
-        
-        nb.Label(frame, text='General Settings').grid(row=current_row, sticky="NSEW")
+        self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
+        self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
+
+        # Title
+        title_label = tk.Label(frame, text="Elite Explorer Settings", font=('TkDefaultFont', 12, 'bold'))
+        title_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
         current_row += 1
+        
+
+        # Global Settings
+        general_label = tk.Label(frame, text="Global Settings", font=('TkDefaultFont', 10, 'bold'))
+        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        current_row += 1
+
         nb.Checkbutton(frame, text='Clear Unknowns List', variable=self.clear_unknows).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
-        # nb.Label(frame).grid(row=current_row)
+
         nb.Checkbutton(frame, text='Show Partially Explored', variable=self.show_partially_explored).grid(row=current_row, column=0, sticky="NSEW")
-        current_row += 1  # Always increment our row counter, makes for far easier tkinter design.
+        current_row += 1
+        
+
+        # Main UI Settings
+        general_label = tk.Label(frame, text="Main UI Settings", font=('TkDefaultFont', 10, 'bold'))
+        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        current_row += 1
+
+        nb.Checkbutton(frame, text='Show Main UI', variable=self.main_ui_visible).grid(row=current_row, column=0, sticky="NSEW")
+        current_row += 1
+        
+        
+        # Overlay Settings
+        general_label = tk.Label(frame, text="Overlay Settings", font=('TkDefaultFont', 10, 'bold'))
+        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        current_row += 1
+
+        nb.Checkbutton(frame, text='Enable Overlay', variable=self.enable_overlay).grid(row=current_row, column=0, sticky="NSEW")
+        current_row += 1
+
         return frame
 
     def on_preferences_closed(self, cmdr: str, is_beta: bool) -> None:
@@ -86,11 +141,10 @@ class EliteExplorer:
         :param cmdr: The current ED Commander
         :param is_beta: Whether or not EDMC is currently marked as in beta mode
         """
-        # You need to cast to `int` here to store *as* an `int`, so that
-        # `config.get_int()` will work for re-loading the value.
         config.set('ee_clear_unknows', int(self.clear_unknows.get()))
         config.set('ee_partially_explored', int(self.show_partially_explored.get()))
-        
+        config.set('ee_main_ui_visible', int(self.main_ui_visible.get()))
+        config.set('ee_enable_overlay', int(self.enable_overlay.get()))
 
     def setup_main_ui(self, parent: tk.Frame) -> tk.Frame:
         """
