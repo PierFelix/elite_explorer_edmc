@@ -172,10 +172,14 @@ if __name__ == "__main__":
                         case "Location" | "FSDJump":
                             
                             # TODO Needs a better system that checks if it is more than 20 LYs away
-                            # Or just keep rechecking after each jump, will make spansg part slow...
+                            # would require calculating distance with cords...
+                            StarSystem: str = data["StarSystem"]
                             if CLEAR_UNKNOWNS:
-                                    unexplored.clear()
-                                    partially_explored.clear()
+                                unexplored.clear()
+                                partially_explored.clear()
+                            else:
+                                _ = unexplored.pop(StarSystem, None)
+                                _ = partially_explored.pop(StarSystem, None)
                             
                             x, y, z = data["StarPos"]
 
@@ -198,7 +202,8 @@ if __name__ == "__main__":
                                         print("Max retries exceeded, skipping this system...")
                                         nearby.clear()
                                         break
-
+                            
+                            _ = edsm_nearby.pop(StarSystem, None)
                             for system_info in edsm_nearby:
                                 system_name = system_info["name"]
                                 nearby[system_name] = {}
