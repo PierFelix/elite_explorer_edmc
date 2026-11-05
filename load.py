@@ -271,20 +271,20 @@ class EliteExplorer():
 
                                 match explored:
                                     case 0:
-                                        print(f"New unexplored (Spansh): {system_name}")
-                                        unexplored[system_name] = {}
+                                        logger.info(f"New unexplored (Spansh): {system_name}")
+                                        self.unexplored[system_name] = {}
                                     case 1 | 2 | 3:
                                         scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
                                         total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
-                                        print(f"New partially explored: {system_name}")
-                                        partially_explored[system_name]  = {}
+                                        logger.info(f"New partially explored: {system_name}")
+                                        self.partially_explored[system_name]  = {}
                             
                             except requests.exceptions.HTTPError as e:
                                 if e.response.status_code != 404:
                                     logger.error(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
                                 else:
-                                    # print(f"{system_name} is not known by Spansh!")
-                                    unexplored[system_name] = {}
+                                    logger.info(f"{system_name} is not known by Spansh!")
+                                    self.unexplored[system_name] = {}
 
 
                 logger.info("Finished checking nearby systems with Spansh")        
@@ -293,8 +293,8 @@ class EliteExplorer():
                 if self.nearby_systems:
                     system_name = entry["Name"]
                     if not system_name in self.nearby_systems and not self.jump_system == system_name:
-                        unexplored[system_name] = {}
-                        print(f"{system_name} is not known by EDSM!")
+                        self.unexplored[system_name] = {}
+                        logger.info(f"{system_name} is not known by EDSM!")
 
             case "StartJump":
                 # Jump can be more than 20 LY, meaning the system will never be
@@ -308,7 +308,7 @@ class EliteExplorer():
                     case "GalacticPowers":
                         logger.info("Fully Unexplored Systems:")
                         for sys in self.unexplored.keys():
-                            logger.info("sys")
+                            logger.info(f"{sys}")
 
                     # Opening Codex
                     case "Codex":
