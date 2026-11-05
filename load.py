@@ -155,18 +155,119 @@ class EliteExplorer():
         :param parent: EDMC main window Tk
         :return: Our frame
         """
-        current_row = 0
-        frame = tk.Frame(parent)
-        button = tk.Button(
-            frame,
-            text="Count me",
-            # command=lambda: self.click_count.set(str(int(self.click_count.get()) + 1))
-        )
-        button.grid(row=current_row)
-        current_row += 1
-        tk.Label(frame, text="Count:").grid(row=current_row, sticky=tk.W)
-        # tk.Label(frame, textvariable=self.click_count).grid(row=current_row, column=1)
-        return frame
+
+    def journal_event(self, cmdrname: str, is_beta: bool, system: str, station: str, entry: dict, state: dict):
+        match entry.get("event"):
+            case "Location" | "FSDJump":
+                # TODO Needs a better system that checks if it is more than 20 LYs away
+                # would require calculating distance with cords...
+                StarSystem: str = entry["StarSystem"]
+                logger.info("StarSystem = " + StarSystem)
+                logger.info(f"type(StarSystem) = {type(StarSystem)}")
+                if self.clear_unknows:
+                    self.unexplored.clear()
+                    self.partially_explored.clear()
+                else:
+                    _ = self.unexplored.pop(StarSystem, None)
+                    _ = self.partially_explored.pop(StarSystem, None)
+                
+                x, y, z = entry["StarPos"]
+
+                edsm_nearby = {}
+                tries = 0
+                while not edsm_nearby:
+                    try:
+                        edsm_nearby = get_nearby_systems_cords(x, y, z)
+                    except requests.exceptions.HTTPError as e:
+                        logger.warning(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
+                        if e.response.status_code != 503:
+                            logger.error("Skipping this instance")
+                            self.nearby_systems.clear()
+                            break
+                        elif tries < 5:
+                            tries += 1
+                            logger.debug(f"Will retry in 3 seconds... [{tries}/5]")
+                            time.sleep(3)
+                        else:
+                            logger.error("Max retries exceeded, skipping this system...")
+                            self.nearby_systems.clear()
+                            break
+                
+                if StarSystem in edsm_nearby:
+                    _ = edsm_nearby.pop(StarSystem)
+
+                for system_info in edsm_nearby:
+                    system_name = system_info["name"]
+                    self.nearby_systems[system_name] = {}
+
+                    if self.show_partially_explored:
+                        id64 = system_info["id64"]
+                        if id64 and id64 >= 0:
+                            self.nearby_systems[system_name]["id64"] = id64
+                            try:
+                                explo_status = get_exploration_status(id64)
+
+                                explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
+                                self.nearby_systems[system_name]["scannedBodies"] = scannedBodies
+                                self.nearby_systems[system_name]["bodyCount"] = bodyCount
+                                self.nearby_systems[system_name]["explored"] = explored
+
+                                match explored:
+                                    case 0:
+                                        print(f"New unexplored (Spansh): {system_name}")
+                                        unexplored[system_name] = {}
+                                    case 1 | 2 | 3:
+                                        scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
+                                        total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
+                                        print(f"New partially explored: {system_name}")
+                                        partially_explored[system_name]  = {}
+                            
+                            except requests.exceptions.HTTPError as e:
+                                if e.response.status_code != 404:
+                                    logger.error(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
+                                else:
+                                    # print(f"{system_name} is not known by Spansh!")
+                                    unexplored[system_name] = {}
+
+
+                logger.info("Finished checking nearby systems with Spansh")        
+                    
+            case "FSDTarget":
+                if self.nearby_systems:
+                    system_name = entry["Name"]
+                    if not system_name in self.nearby_systems and not self.jump_system == system_name:
+                        unexplored[system_name] = {}
+                        print(f"{system_name} is not known by EDSM!")
+
+            case "StartJump":
+                # Jump can be more than 20 LY, meaning the system will never be
+                # in the nearby list
+                if entry["JumpType"] == "Hyperspace":
+                    self.jump_system = entry["StarSystem"]
+
+            case "Music":
+                match entry["MusicTrack"]:
+                    # Opening Powerplay or Galnet News
+                    case "GalacticPowers":
+                        logger.info("Fully Unexplored Systems:")
+                        for sys in self.unexplored.keys():
+                            logger.info("sys")
+
+                    # Opening Codex
+                    case "Codex":
+                        logger.info("Partially Explored Systems:")
+                        if self.show_partially_explored:
+                            for k in self.partially_explored.keys():
+                                scanned = str(self.nearby_systems[k]["scannedBodies"]).rjust(3, "0") if self.nearby_systems[k]["scannedBodies"] else "???"
+                                total = str(self.nearby_systems[k]["bodyCount"]).rjust(3, "0") if self.nearby_systems[k]["bodyCount"] else "???"
+                                logger.info(f"[{scanned}/{total}] {k}")
+                        else:
+                            logger.info("Checking partially explored is disabled!")
+                        
+                    case _:
+                        pass
+            case _:
+                pass
 
 
 ee = EliteExplorer()
@@ -225,10 +326,4 @@ def journal_entry(cmdrname: str, is_beta: bool, system: str, station: str, entry
     :param state:
     :return: None
     """
-    # logger.debug(
-    #         f'cmdr = "{cmdrname}", is_beta = "{is_beta}"'
-    #         f', system = "{system}", station = "{station}"'
-    #         f', event = "{entry["event"]}"'
-    # )
-    # this.plugin_test.store(entry['timestamp'], cmdrname, system, station, entry['event'])
-    pass
+    ee.journal_event(cmdrname, is_beta, system, station, entry, state)
