@@ -1,8 +1,12 @@
 import json
-import urllib.request
 
-from urllib.parse import quote
+import requests
+from requests.compat import quote_plus
 
+CLEAR_UNKNOWNS = True
+SHOW_PARTIALLY_EXPLORED = True
+
+HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 
 # Exploration status variables 
 FULLYSCANNED = 4 # system is logged, amount of bodies is recorded and all bodies scanned
@@ -11,28 +15,36 @@ UNKNOWNSCAN = 2  # system is logged, amount of bodies is NOT recorded but some b
 LOGGED = 1       # system is logged, amount of bodies is NOT recorded, no bodies scnned (system is only known by name and possibly cords)
 MISSING = 0      # system is NOT known to Spansh
 
+def send_http_request(url, headers = HTTP_HEADERS, timeout: float = 30):
+    return requests.get(url, headers=headers, timeout=timeout)
 
-def get_nearby_stars(system_name):
-    html_safe_system_name = quote(system_name)
-    my_url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={html_safe_system_name}"
-    my_headers = {"User-Agent": "Elite Explorer - Python"}
-    my_request = urllib.request.Request(my_url, data=None, headers=my_headers)
-    contents = urllib.request.urlopen(my_request, timeout=30).read()
-    return json.loads(contents.strip())
+def get_nearby_systems(system_name) -> dict:
+    url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={quote_plus(system_name)}"
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
+
+def get_nearby_systems_cords(x: float, y: float, z: float) -> dict:
+    url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&x={quote_plus(str(x))}&y={quote_plus(str(y))}&z={quote_plus(str(z))}"
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
 
 
-def get_exploration_status(SystemAddress: int):
+def get_exploration_status(SystemAddress: int) -> dict:
     """
     Requests a data dump of a system from Spansh
 
     :param int SystemAddress: id64 of the system (SystemAddress in journal)
     :return: json format of Spansh data dump
     """
-    headers = {"User-Agent": "Elite Explorer - Python"}
-    spansh_url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
-    spansh_request = urllib.request.Request(url=spansh_url, data=None, headers=headers)
-    contents = urllib.request.urlopen(spansh_request, timeout=30).read()
-    return json.loads(contents.strip())
+    url = f"https://spansh.co.uk/api/dump/{SystemAddress}"
+    res = send_http_request(url)
+    if res.ok:
+        return res.json()
+    raise requests.exceptions.HTTPError(response=res)
 
 
 def exploration_state_check(spansh_dump) -> list[int]:
@@ -45,7 +57,7 @@ def exploration_state_check(spansh_dump) -> list[int]:
     """
     scannedBodies: int = 0
     bodyCount: int = 0
-    status: int
+    status = MISSING
 
     if spansh_dump and spansh_dump.get("system"):
         bodyCount: int = spansh_dump.get("system").get("bodyCount")
@@ -64,11 +76,6 @@ def exploration_state_check(spansh_dump) -> list[int]:
                 status = UNKNOWNSCAN
         elif spansh_dump.get("system").get("name"):
             status = LOGGED
-        else:
-            # fallback option (should not be possible)
-            status = MISSING
-    else:
-        status = MISSING
 
     return [status, scannedBodies, bodyCount]
 
@@ -93,18 +100,65 @@ if __name__ == "__main__":
                 f"LY: {system['distance']} Name: {system['name']} Bodies: {system['bodyCount']}"
             )
 
+    # journal_dir = os.path.expanduser(
+    #     r"~\Saved Games\Frontier Developments\Elite Dangerous"
+    # )
     journal_dir = os.path.expanduser(
-        r"~\Saved Games\Frontier Developments\Elite Dangerous"
+        r"~/.local/share/Steam/steamapps/compatdata/359320/pfx/drive_c/users/steamuser/Saved Games/Frontier Developments/Elite Dangerous/"
     )
-    # This sometimes picks up the wrong journal if we start before the game does.
-    # TODO FIXME
+
     latest_file = get_latest_journal(journal_dir)
-    print(f"Reading latest journal: {latest_file}")
 
     if latest_file:
+        with open(latest_file, "rb") as f:
+            try:
+                _ = f.seek(-2, os.SEEK_END)
+                while f.read(1) != b'\n':
+                    _ = f.seek(-2, os.SEEK_CUR)
+            except OSError:
+                _ = f.seek(0)
+            
+            try:
+                line = f.readline()
+                data = json.loads(line.strip())
+                event_type = data.get("event")
+                if event_type == "Shutdown":
+                    ed_running = False
+                    print("Waiting for Elite:Dangerous to start.")
+                else:
+                    ed_running = True
+
+            except json.JSONDecodeError:
+                    ed_running = True
+        
+        while not ed_running:
+            time.sleep(5)
+            new_latest_file = get_latest_journal(journal_dir)
+            if new_latest_file != latest_file:
+                latest_file = new_latest_file
+                ed_running = True
+                print("Detected new journal file!")
+
+    else:
+        print(f"Found no journals inside directory {journal_dir}")
+        ed_running = False
+        while not ed_running:
+            time.sleep(5)
+            latest_file = get_latest_journal(journal_dir)
+            if latest_file:
+                ed_running = True
+                print("Detected new journal file!")
+
+    if latest_file:
+        print(f"Reading latest journal: {latest_file.split("\\")[-1]}")
         with open(latest_file, "r", encoding="utf-8") as f:
             # Move to the end of the file to read only new events (tail)
-            f.seek(0, os.SEEK_END)
+            _ = f.seek(0, os.SEEK_END)
+            
+            nearby = {}
+            unexplored = {}
+            partially_explored = {}
+            jump_system = ""
 
             while True:
                 line = f.readline()
@@ -114,24 +168,119 @@ if __name__ == "__main__":
 
                 try:
                     data = json.loads(line.strip())
-                    event_type = data.get("event")
-                    # ignore_list = [ 'Scan','FSSBodySignals', 'Music', 'FSDTarget' ]
-                    if event_type == "Location":
-                        print(
-                            f"Event: {event_type} | Star System {data['StarSystem']} | StarPos {data['StarPos']}"
-                        )
-                        nearby = get_nearby_stars(data["StarSystem"])
-                        better_print_nearby(nearby)
-                    elif event_type == "FSDJump":
-                        print(f"Event: {event_type} | Data: {data['StarSystem']}")
-                        nearby = get_nearby_stars(data["StarSystem"])
-                        better_print_nearby(nearby)
-                    # elif event_type in ignore_list:
-                    # continue
-                    elif event_type == "Shutdown":
-                        exit()
-                    else:
-                        # print(f"Event: {event_type} ")
-                        continue
+                    match data.get("event"):
+                        case "Location" | "FSDJump":
+                            
+                            # TODO Needs a better system that checks if it is more than 20 LYs away
+                            # would require calculating distance with cords...
+                            StarSystem: str = data["StarSystem"]
+                            if CLEAR_UNKNOWNS:
+                                unexplored.clear()
+                                partially_explored.clear()
+                            else:
+                                _ = unexplored.pop(StarSystem, None)
+                                _ = partially_explored.pop(StarSystem, None)
+                            
+                            x, y, z = data["StarPos"]
+
+                            edsm_nearby = {}
+                            tries = 0
+                            while not edsm_nearby:
+                                try:
+                                    edsm_nearby = get_nearby_systems_cords(x, y, z)
+                                except requests.exceptions.HTTPError as e:
+                                    print(f"Got an {e.response.status_code}!\nReason: {e.response.reason}")
+                                    if e.response.status_code != 503:
+                                        print("Skipping this instance")
+                                        nearby.clear()
+                                        break
+                                    elif tries < 5:
+                                        tries += 1
+                                        print(f"Will retry in 3 seconds... [{tries}/5]")
+                                        time.sleep(3)
+                                    else:
+                                        print("Max retries exceeded, skipping this system...")
+                                        nearby.clear()
+                                        break
+                            
+                            _ = edsm_nearby.pop(StarSystem, None)
+                            for system_info in edsm_nearby:
+                                system_name = system_info["name"]
+                                nearby[system_name] = {}
+
+                                if SHOW_PARTIALLY_EXPLORED:
+                                    id64 = system_info["id64"]
+                                    if id64 and id64 >= 0:
+                                        nearby[system_name]["id64"] = id64
+                                        try:
+                                            explo_status = get_exploration_status(id64)
+
+                                            explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
+                                            nearby[system_name]["explored"] = explored
+                                            nearby[system_name]["scannedBodies"] = scannedBodies
+                                            nearby[system_name]["bodyCount"] = bodyCount
+
+                                            match explored:
+                                                case 0:
+                                                    print(f"New unexplored (Spansh): {system_name}")
+                                                    unexplored[system_name] = {}
+                                                case 1 | 2 | 3:
+                                                    scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
+                                                    total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
+                                                    print(f"New partially explored: {system_name}")
+                                                    partially_explored[system_name]  = {}
+                                        
+                                        except requests.exceptions.HTTPError as e:
+                                            if e.response.status_code != 404:
+                                                print(f"Got an {e.response.status_code}!\nReason: {e.response.reason}")
+                                            else:
+                                                print(f"{system_name} is not known by Spansh!")
+                                                unexplored[system_name] = {}
+
+
+                            print("Finished checking nearby systems with Spansh")        
+                                
+                        case "FSDTarget":
+                            if nearby:
+                                system_name = data["Name"]
+                                if not system_name in nearby and not jump_system == system_name:
+                                    unexplored[system_name] = {}
+                                    print(f"{system_name} is not known by EDSM!")
+
+                        case "StartJump":
+                            # Jump can be more than 20 LY, meaning the system will never be
+                            # in the nearby list
+                            if data["JumpType"] == "Hyperspace":
+                                jump_system = data["StarSystem"]
+
+                        case "Music":
+                            match data["MusicTrack"]:
+                                # Opening Powerplay or Galnet News
+                                case "GalacticPowers":
+                                    print("\nFully Unexplored Systems:")
+                                    print("\n".join(unexplored.keys()))
+
+                                # Opening Codex
+                                case "Codex":
+                                    print("\nFully Unexplored Systems:")
+                                    print("\n".join(unexplored.keys()))
+                                    print("\nPartially Explored Systems:")
+                                    if SHOW_PARTIALLY_EXPLORED:
+                                        for k in partially_explored.keys():
+                                            scanned = str(nearby[k]["scannedBodies"]).rjust(3, "0") if nearby[k]["scannedBodies"] else "???"
+                                            total = str(nearby[k]["bodyCount"]).rjust(3, "0") if nearby[k]["bodyCount"] else "???"
+                                            print(f"[{scanned}/{total}] {k}")
+                                    else:
+                                        print("Checking partially explored is disabled!")
+                                    
+                                case _:
+                                    continue
+
+                        case "Shutdown":
+                            exit()
+                        
+                        case _:
+                            continue
+  
                 except json.JSONDecodeError:
                     pass
