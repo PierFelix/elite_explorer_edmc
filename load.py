@@ -102,7 +102,7 @@ class EliteExplorer():
         self.jump_system = ""
 
         self.plugin_dir: str
-        self.main_ui: tk.Frame
+        self.main_ui: EEMainUI
 
 
     def on_load(self, plugin_dir: str) -> str:
@@ -130,7 +130,7 @@ class EliteExplorer():
         self.on_preferences_closed("", False)  # Save our prefs
         logger.info("Stopping")
 
-    def setup_preferences(self, parent: nb.Notebook, cmdr: str, is_beta: bool) -> nb.Frame | None:
+    def setup_preferences(self, parent: nb.Notebook | tk.Frame, cmdr: str, is_beta: bool) -> tk.Frame | None:
         """
         setup_preferences is called by plugin_prefs below.
 
@@ -142,7 +142,7 @@ class EliteExplorer():
         :return: The frame to add to the settings window
         """
         current_row = 0
-        frame: nb.Frame = nb.Frame(parent)
+        frame: tk.Frame = nb.Frame(parent)
         
         self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
@@ -297,8 +297,8 @@ class EliteExplorer():
                         logger.info(f"{system_name} is not known by EDSM!")
 
             case "StartJump":
-                # Jump can be more than 20 LY, meaning the system will never be
-                # in the nearby list
+                # Jump can be more than 20 LY, meaning the system
+                # is most times not in the nearby list
                 if entry["JumpType"] == "Hyperspace":
                     self.jump_system = entry["StarSystem"]
 

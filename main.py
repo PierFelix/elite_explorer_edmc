@@ -8,7 +8,7 @@ HTTP_HEADERS = {"User-Agent": "Elite Explorer - Python"}
 # Exploration status variables 
 FULLYSCANNED = 4 # system is logged, amount of bodies is recorded and all bodies scanned
 PARTIALSCAN = 3  # system is logged, amount of bodies is recorded and some bodies scanned/ not all scanned
-UNKNOWNSCAN = 2  # system is logged, amount of bodies is NOT recorded but some bodies scanned scanned
+UNKNOWNSCAN = 2  # system is logged, amount of bodies is NOT recorded but some bodies scanned
 LOGGED = 1       # system is logged, amount of bodies is NOT recorded, no bodies scnned (system is only known by name and possibly cords)
 MISSING = 0      # system is NOT known to Spansh
 
@@ -28,7 +28,6 @@ def get_nearby_systems_cords(x: float, y: float, z: float) -> dict:
     if res.ok:
         return res.json()
     raise requests.exceptions.HTTPError(response=res)
-
 
 def get_exploration_status(SystemAddress: int) -> dict:
     """
