@@ -1,4 +1,5 @@
 import json
+from logging import Logger
 
 import requests
 from requests.compat import quote_plus

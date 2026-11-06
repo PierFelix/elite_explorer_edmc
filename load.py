@@ -91,7 +91,7 @@ class EEMainUI(tk.Frame):
 
 class EliteExplorer():
     def __init__(self) -> None:
-        self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
+        self.clear_nearby = tk.IntVar(value=int(config.get_int('ee_clear_nearby')))
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
         self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
         self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
@@ -111,7 +111,7 @@ class EliteExplorer():
         logger.info(f'Loaded "{PLUGIN_NAME}", located at dir "{plugin_dir}"')
         
         # I don't know if there is an intended way for default config options...
-        if config.set('ee_clear_unknows', int(self.clear_unknows.get())) is None:
+        if config.set('ee_clear_unknows', int(self.clear_nearby.get())) is None:
             config.set('ee_clear_unknows', 1) 
         if config.set('ee_partially_explored', int(self.show_partially_explored.get())) is None:
             config.set('ee_partially_explored', 1) 
@@ -147,7 +147,7 @@ class EliteExplorer():
         current_row = 0
         frame: tk.Frame = nb.Frame(parent)
         
-        self.clear_unknows = tk.IntVar(value=int(config.get_int('ee_clear_unknows')))
+        self.clear_nearby = tk.IntVar(value=int(config.get_int('ee_clear_nearby')))
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
         self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
         self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
@@ -164,7 +164,7 @@ class EliteExplorer():
         general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
         current_row += 1
 
-        nb.Checkbutton(frame, text='Clear Unknowns List', variable=self.clear_unknows).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(frame, text='Clear Nearby List', variable=self.clear_nearby).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
 
         nb.Checkbutton(frame, text='Show Partially Explored', variable=self.show_partially_explored).grid(row=current_row, column=0, sticky="NSEW")
@@ -204,7 +204,7 @@ class EliteExplorer():
         :param cmdr: The current ED Commander
         :param is_beta: Whether or not EDMC is currently marked as in beta mode
         """
-        config.set('ee_clear_unknows', int(self.clear_unknows.get()))
+        config.set('ee_clear_unknows', int(self.clear_nearby.get()))
         config.set('ee_partially_explored', int(self.show_partially_explored.get()))
         config.set('ee_main_ui_visible', int(self.main_ui_visible.get()))
         config.set('ee_enable_overlay', int(self.enable_overlay.get()))
@@ -228,12 +228,8 @@ class EliteExplorer():
             case "Location" | "FSDJump":
                 # TODO Needs a better system that checks if it is more than 20 LYs away
                 # would require calculating distance with cords...
-                StarSystem: str = entry["StarSystem"]
-                logger.info("StarSystem = " + StarSystem)
-                logger.info(f"type(StarSystem) = {type(StarSystem)}")
-                if self.clear_unknows:
-                    self.unexplored.clear()
-                    self.partially_explored.clear()
+                if self.clear_nearby:
+                    self.nearby_systems.clear()
                 else:
                     _ = self.unexplored.pop(StarSystem, None)
                     _ = self.partially_explored.pop(StarSystem, None)
@@ -303,8 +299,8 @@ class EliteExplorer():
                 if self.nearby_systems:
                     system_name = entry["Name"]
                     if not system_name in self.nearby_systems and not self.jump_system == system_name:
-                        self.unexplored[system_name] = {}
-                        logger.info(f"{system_name} is not known by EDSM!")
+                        if self.debug_logging.get() <= 20:
+                            logger.info(f"{system_name} is not known by EDSM!")
 
             case "StartJump":
                 # Jump can be more than 20 LY, meaning the system
