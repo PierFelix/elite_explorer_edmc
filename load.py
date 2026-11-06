@@ -95,6 +95,7 @@ class EliteExplorer():
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
         self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
         self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
+        self.debug_logging = tk.IntVar(value=int(config.get_int('ee_debug_logging')))
 
         self.unexplored = {}
         self.nearby_systems = {}
@@ -117,7 +118,9 @@ class EliteExplorer():
         if config.set('ee_main_ui_visible', int(self.main_ui_visible.get())) is None:
             config.set('ee_main_ui_visible', 1) 
         if config.set('ee_enable_overlay', int(self.enable_overlay.get())) is None:
-            config.set('ee_enable_overlay', 0)        
+            config.set('ee_enable_overlay', 0)
+        if config.set('ee_debug_logging', int(self.debug_logging.get())) is None:
+            config.set('ee_debug_logging', 30)    
         
         return PLUGIN_NAME
     
@@ -148,6 +151,7 @@ class EliteExplorer():
         self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
         self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
         self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
+        self.debug_logging = tk.IntVar(value=int(config.get_int('ee_debug_logging')))
 
         # Title
         title_label = tk.Label(frame, text="Elite Explorer Settings", font=('TkDefaultFont', 12, 'bold'))
@@ -164,6 +168,11 @@ class EliteExplorer():
         current_row += 1
 
         nb.Checkbutton(frame, text='Show Partially Explored', variable=self.show_partially_explored).grid(row=current_row, column=0, sticky="NSEW")
+        current_row += 1
+        
+        # needs to be an option to select [NOTSET (optional), DEBUG, INFO, WARNING, ERROR, CRITICAL, NONE] 
+        # with values [0, 10, 20, 30, 40, 50, 51] (see Logging Levels)
+        nb.Checkbutton(frame, text='Enable Debug Logging', variable=self.debug_logging).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
         
 
@@ -199,6 +208,7 @@ class EliteExplorer():
         config.set('ee_partially_explored', int(self.show_partially_explored.get()))
         config.set('ee_main_ui_visible', int(self.main_ui_visible.get()))
         config.set('ee_enable_overlay', int(self.enable_overlay.get()))
+        config.set('ee_debug_logging', int(self.debug_logging.get()))
 
     def setup_main_ui(self, parent: tk.Frame) -> tk.Frame:
         """
