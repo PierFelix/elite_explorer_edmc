@@ -1,8 +1,6 @@
 import logging
 import os
 
-import time
-
 import tkinter as tk
 import myNotebook as nb
 
@@ -87,6 +85,8 @@ class EEMainUI(tk.Frame):
         self.update()
 
     def update(self):
+        if self.visible:
+            pass
         pass
 
 class EliteExplorer():
@@ -231,74 +231,20 @@ class EliteExplorer():
                 if self.clear_nearby:
                     self.nearby_systems.clear()
                 else:
-                    _ = self.unexplored.pop(StarSystem, None)
-                    _ = self.partially_explored.pop(StarSystem, None)
+                    # Needs a better system, probably check for all
+                    # bodies scanned journal event to update list
+                    add_explored_info(self.nearby_systems[entry["StarSystem"]], UNKNOWNSCAN, scannedBodies=1)
                 
-                x, y, z = entry["StarPos"]
+                gather_nearby_edsm(self.nearby_systems, entry, logger=logger, debug_log=self.debug_logging.get())
 
-                edsm_nearby = {}
-                tries = 0
-                while not edsm_nearby:
-                    try:
-                        edsm_nearby = get_nearby_systems_cords(x, y, z)
-                    except requests.exceptions.HTTPError as e:
-                        logger.warning(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
-                        if e.response.status_code != 503:
-                            logger.error("Skipping this instance")
-                            self.nearby_systems.clear()
-                            break
-                        elif tries < 5:
-                            tries += 1
-                            logger.debug(f"Will retry in 3 seconds... [{tries}/5]")
-                            time.sleep(3)
-                        else:
-                            logger.error("Max retries exceeded, skipping this system...")
-                            self.nearby_systems.clear()
-                            break
-                
-                if StarSystem in edsm_nearby:
-                    _ = edsm_nearby.pop(StarSystem)
-
-                for system_info in edsm_nearby:
-                    system_name = system_info["name"]
-                    self.nearby_systems[system_name] = {}
-
-                    if self.show_partially_explored:
-                        id64 = system_info["id64"]
-                        if id64 and id64 >= 0:
-                            self.nearby_systems[system_name]["id64"] = id64
-                            try:
-                                explo_status = get_exploration_status(id64)
-
-                                explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
-                                self.nearby_systems[system_name]["scannedBodies"] = scannedBodies
-                                self.nearby_systems[system_name]["bodyCount"] = bodyCount
-                                self.nearby_systems[system_name]["explored"] = explored
-
-                                match explored:
-                                    case 0:
-                                        logger.info(f"New unexplored (Spansh): {system_name}")
-                                        self.unexplored[system_name] = {}
-                                    case 1 | 2 | 3:
-                                        scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
-                                        total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
-                                        logger.info(f"New partially explored: {system_name}")
-                                        self.partially_explored[system_name]  = {}
-                            
-                            except requests.exceptions.HTTPError as e:
-                                if e.response.status_code != 404:
-                                    logger.error(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
-                                else:
-                                    logger.info(f"{system_name} is not known by Spansh!")
-                                    self.unexplored[system_name] = {}
-
-
-                logger.info("Finished checking nearby systems with Spansh")        
+                if self.show_partially_explored:
+                    crosscheck_spansh(self.nearby_systems, logger=logger, debug_log=self.debug_logging.get()) 
                     
             case "FSDTarget":
                 if self.nearby_systems:
                     system_name = entry["Name"]
                     if not system_name in self.nearby_systems and not self.jump_system == system_name:
+                        add_explored_info(self.nearby_systems[system_name])
                         if self.debug_logging.get() <= 20:
                             logger.info(f"{system_name} is not known by EDSM!")
 
@@ -309,26 +255,27 @@ class EliteExplorer():
                     self.jump_system = entry["StarSystem"]
 
             case "Music":
-                match entry["MusicTrack"]:
-                    # Opening Powerplay or Galnet News
-                    case "GalacticPowers":
-                        logger.info("Fully Unexplored Systems:")
-                        for sys in self.unexplored.keys():
-                            logger.info(f"{sys}")
+                if self.debug_logging.get() <= 20:
+                    match entry["MusicTrack"]:
+                        # Opening Powerplay or Galnet News
+                        case "GalacticPowers":
+                            logger.info("Fully Unexplored Systems:")
+                            for k in [sys for sys, v in self.nearby_systems.items() if v.get("explored") in [MISSING]]:
+                                logger.info(f"{k}")
 
-                    # Opening Codex
-                    case "Codex":
-                        logger.info("Partially Explored Systems:")
-                        if self.show_partially_explored:
-                            for k in self.partially_explored.keys():
-                                scanned = str(self.nearby_systems[k]["scannedBodies"]).rjust(3, "0") if self.nearby_systems[k]["scannedBodies"] else "???"
-                                total = str(self.nearby_systems[k]["bodyCount"]).rjust(3, "0") if self.nearby_systems[k]["bodyCount"] else "???"
-                                logger.info(f"[{scanned}/{total}] {k}")
-                        else:
-                            logger.info("Checking partially explored is disabled!")
-                        
-                    case _:
-                        pass
+                        # Opening Codex
+                        case "Codex":
+                            logger.info("Partially Explored Systems:")
+                            if self.show_partially_explored:
+                                for k in [sys for sys, v in self.nearby_systems.items() if v.get("explored") in [LOGGED, UNKNOWNSCAN, PARTIALSCAN]]:
+                                    scanned = str(self.nearby_systems[k]["scannedBodies"]).rjust(3, "0") if self.nearby_systems[k]["scannedBodies"] else "???"
+                                    total = str(self.nearby_systems[k]["bodyCount"]).rjust(3, "0") if self.nearby_systems[k]["bodyCount"] else "???"
+                                    logger.info(f"[{scanned}/{total}] {k}")
+                            else:
+                                logger.info("Checking partially explored is disabled!")
+                            
+                        case _:
+                            pass
             case _:
                 pass
 

@@ -76,6 +76,79 @@ def exploration_state_check(spansh_dump) -> list[int]:
 
     return [status, scannedBodies, bodyCount]
 
+def add_explored_info(sys_dict: dict, explored: int = MISSING, scannedBodies = 0, bodyCount = 0):
+    sys_dict["scannedBodies"] = scannedBodies
+    sys_dict["bodyCount"] = bodyCount
+    sys_dict["explored"] = explored
+
+def gather_nearby_edsm(nearby_dict: dict, entry: dict, logger: Logger, debug_log: int = 30, retries: int = 5, delay: float = 3.):
+    x, y, z = entry["StarPos"]
+
+    edsm_nearby = {}
+    tries = 0
+    while not edsm_nearby:
+        try:
+            edsm_nearby = get_nearby_systems_cords(x, y, z)
+        except requests.exceptions.HTTPError as e:
+            if debug_log <= 30:
+                logger.warning(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
+            if e.response.status_code != 503:
+                if debug_log <= 40:
+                    logger.error("Skipping this instance")
+                nearby_dict.clear()
+                return
+            elif tries < retries:
+                tries += 1
+                if debug_log <= 20:
+                    logger.debug(f"Will retry in 3 seconds... [{tries}/5]")
+                time.sleep(delay)
+            else:
+                if debug_log <= 40:
+                    logger.error("Max retries exceeded, skipping this system...")
+                nearby_dict.clear()
+                return
+    
+    if StarSystem in edsm_nearby:
+        _ = edsm_nearby.pop(StarSystem)
+    
+    for system_info in edsm_nearby:
+        id64 = system_info["id64"]
+        if not id64 is None:
+            nearby_dict[system_info["name"]] = {"id64": id64}
+
+
+def crosscheck_spansh(nearby_dict: dict, logger: Logger, debug_log: int = 30):
+    for system_name in nearby_dict:
+        subset = nearby_dict[system_name]
+        if not "explored" in subset:
+            try:
+                explo_status = get_exploration_status(id64)
+                explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
+                add_explored_info(subset, explored, scannedBodies, bodyCount)
+
+                if debug_log <= 20:
+                    match explored:
+                        case 0:
+                            # This case (should) never trigger
+                            logger.info(f"New unexplored (Spansh): {system_name}")
+                            # self.unexplored[system_name] = {}
+                        case 1 | 2 | 3:
+                            scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
+                            total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
+                            logger.info(f"New partially explored: [{scanned}/{total}] {system_name}")
+                            # self.partially_explored[system_name]  = {}
+            
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code != 404:
+                    if debug_log <= 40:
+                        logger.error(f"Got an {e.response.status_code}! Reason: {e.response.reason}")
+                else:
+                    if debug_log <= 20:
+                        logger.info(f"{system_name} is not known by Spansh!")
+                    add_explored_info(subset)
+                    # self.unexplored[system_name] = {}
+    if debug_log <= 20:
+        logger.info("Finished crosschecking nearby systems with Spansh")    
 
 if __name__ == "__main__":
     import glob
