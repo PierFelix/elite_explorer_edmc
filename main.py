@@ -96,7 +96,6 @@ def gather_nearby_edsm(nearby_dict: dict, entry: dict, logger: Logger, debug_log
             if e.response.status_code != 503:
                 if debug_log <= 40:
                     logger.error("Skipping this instance")
-                nearby_dict.clear()
                 return
             elif tries < retries:
                 tries += 1
@@ -106,7 +105,6 @@ def gather_nearby_edsm(nearby_dict: dict, entry: dict, logger: Logger, debug_log
             else:
                 if debug_log <= 40:
                     logger.error("Max retries exceeded, skipping this system...")
-                nearby_dict.clear()
                 return
     
     if entry["StarSystem"] in edsm_nearby:
