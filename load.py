@@ -346,7 +346,7 @@ class EliteExplorer:
         # TODO: Add a way to trigger the first Location/ FDSDJump if
         # EDMC was started late (Now waits on next jump)
         match entry.get("event"):
-            case "Location" | "FSDJump":
+            case "Location" | "FSDJump" | "StartUp" | "CarrierJump":
                 # TODO Needs a better system that checks if it is more than 20 LYs away
                 # would require calculating distance with cords...
                 if self.clear_nearby.get():
