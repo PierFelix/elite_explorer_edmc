@@ -384,8 +384,11 @@ class EliteExplorer:
                         not system_name in self.nearby_systems
                         and self.jump_system != system_name
                     ):
-                        self.nearby_systems[system_name] = {}
-                        add_explored_info(self.nearby_systems[system_name])
+                        self.nearby_systems[system_name] = {"id64": entry["SystemAddress"]}
+                        # TODO: Add a variable to the list and note in EDMC
+                        # if the system is in EDSM but not Spansh and vice versa
+                        crosscheck_spansh(self.nearby_systems, logger=logger, debug_log=self.debug_logging.get())
+                        # add_explored_info(self.nearby_systems[system_name])
                         self.main_ui.update()
                         if self.debug_logging.get() <= 20:
                             logger.info(f"{system_name} is not known by EDSM!")
