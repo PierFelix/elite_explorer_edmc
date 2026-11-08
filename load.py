@@ -33,13 +33,19 @@ if not logger.hasHandlers():
 
 
 class EEMainUI(tk.Frame):
-    def __init__(self, parent: tk.Frame) -> None: # , container, gridrow
+    def __init__(
+        self, parent: tk.Frame, systems_dict: dict
+    ) -> None:  # , container, gridrow
         tk.Frame.__init__(self, parent)
         self.parent = parent
+
+        self.systems_dict = systems_dict
 
         self.visible = 1
         self.systems_list_idx = 0
         self.systems_list_txt = ["Unknown Systems", "Partially Known Systems"]
+
+        self.explored_colors = ["#FFA500", "#FFFF00", "#A5FF00"]
 
         self.IMG_SWAP = tk.PhotoImage(
             file=os.path.join(os.path.dirname(__file__), "assets", "swap.png")
@@ -48,43 +54,110 @@ class EEMainUI(tk.Frame):
         current_row = 0
         # frame = tk.Frame(self.parent)
 
-        sys_lis_frame = tk.Frame(self)
-        sys_lis_frame.grid(row=current_row)
+        self.sys_lis_frame = tk.Frame(self)
+        self.sys_lis_frame.grid(row=current_row, sticky="ew")
 
-        systems_list = tk.Label(sys_lis_frame, text=f"{self.systems_list_txt[self.systems_list_idx]}")
-        systems_list.grid(row=0, column=1, sticky="N")
+        self.sys_lis_frame.columnconfigure(0, weight=0)
+        self.sys_lis_frame.columnconfigure(1, weight=1)
 
-        next_but = tk.Button(
-            sys_lis_frame, image=self.IMG_SWAP, width=14, height=14, borderwidth=0
+        self.systems_list = tk.Label(self.sys_lis_frame, text="Waiting...")
+        self.systems_list.grid(row=0, column=1, sticky="W")
+
+        self.swap_but = tk.Button(
+            self.sys_lis_frame,
+            image=self.IMG_SWAP,
+            width=14,
+            height=14,
+            borderwidth=0,
+            command=self.systems_list_swap,
         )
-        next_but.grid(row=0, column=0, sticky=tk.NW, padx=2)
-        next_but.bind("<Button-1>", self.systems_list_swap)
-        # next_but.grid_remove()
-
+        self.swap_but.grid(row=0, column=0, sticky=tk.NW, padx=10)
         current_row += 1
 
-        button = tk.Button(
-            self,
-            text="Count me",
-            # command=lambda: self.click_count.set(str(int(self.click_count.get()) + 1))
-        )
-        button.grid(row=current_row)
+        self.list_container = tk.Frame(self)
+        self.list_container.grid(row=current_row, sticky="ew")
         current_row += 1
-        tk.Label(self, text="Count:").grid(row=current_row, sticky=tk.W)
+
+        logger.info("Main UI initialized")
 
     def set_visible(self, visible: int) -> None:
         self.visible = visible
-        self.update()
+        if self.visible:
+            self.grid()
+            self.update()
+        else:
+            self.grid_remove()
 
-    def systems_list_swap(self, event) -> None:
+    def systems_list_swap(self) -> None:
         self.systems_list_idx = 0 if self.systems_list_idx else 1
         self.update()
 
-    def update_ui(self, event):
-        self.update()
-
-    def update(self):
+    def update(self) -> None:
         if self.visible:
+            self.systems_list.config(text=self.systems_list_txt[self.systems_list_idx])
+
+            for child in self.list_container.winfo_children():
+                child.destroy()
+
+            match self.systems_list_idx:
+                case 0:
+                    names = [
+                        n for n, d in self.systems_dict.items() if not d["explored"]
+                    ]
+                    if len(names) > 0:
+                        for i, name in enumerate(names):
+                            tk.Label(self.list_container, text=name).grid(
+                                row=i, column=0, sticky="w"
+                            )
+                    else:
+                        tk.Label(
+                            self.list_container,
+                            text="No Unknown Systems Found",
+                            fg=self.systems_list.cget("fg"),
+                            bg=self.systems_list.cget("bg"),
+                        ).grid(row=0, column=0, sticky="w")
+
+                case 1:
+                    names = [
+                        (n, d)
+                        for n, d in self.systems_dict.items()
+                        if d["explored"] in [1, 2, 3]
+                    ]
+
+                    if len(names) > 0:
+                        for i, (name, data) in enumerate(names):
+                            scanned = (
+                                str(data["scannedBodies"]).rjust(3, "0")
+                                if data["scannedBodies"]
+                                else "???"
+                            )
+                            total = (
+                                str(data["bodyCount"]).rjust(3, "0")
+                                if data["bodyCount"]
+                                else "???"
+                            )
+                            tk.Label(
+                                self.list_container,
+                                text=f"[{scanned}/{total}]",
+                                bg=self.explored_colors[data["explored"] - 1],
+                                fg="black",
+                            ).grid(row=i, column=0, sticky="w", padx=(0, 10))
+
+                            tk.Label(
+                                self.list_container,
+                                text=name,
+                                bg=self.explored_colors[data["explored"] - 1],
+                                fg="black",
+                            ).grid(row=i, column=1, sticky="w")
+                    else:
+                        tk.Label(
+                            self.list_container,
+                            text="No Partially Known Systems Found",
+                            fg=self.systems_list.cget("fg"),
+                            bg=self.systems_list.cget("bg"),
+                        ).grid(row=0, column=0, sticky="w")
+
+
 class EliteExplorer:
     def __init__(self) -> None:
         self.clear_nearby = tk.IntVar(value=int(config.get_int("ee_clear_nearby")))
@@ -248,7 +321,7 @@ class EliteExplorer:
         :param parent: EDMC main window Tk
         :return: Our frame
         """
-        self.main_ui = EEMainUI(parent)
+        self.main_ui = EEMainUI(parent, self.nearby_systems)
         self.main_ui.set_visible(self.main_ui_visible.get())
         return self.main_ui
 
@@ -261,6 +334,8 @@ class EliteExplorer:
         entry: dict,
         state: dict,
     ):
+    # TODO: Add a way to trigger the first Location/ FDSDJump if
+    # EDMC was started late (Now waits on next jump)
         match entry.get("event"):
             case "Location" | "FSDJump":
                 # TODO Needs a better system that checks if it is more than 20 LYs away
@@ -289,6 +364,7 @@ class EliteExplorer:
                         logger=logger,
                         debug_log=self.debug_logging.get(),
                     )
+                self.main_ui.update()
 
             case "FSDTarget":
                 if self.nearby_systems:
@@ -298,6 +374,7 @@ class EliteExplorer:
                         and self.jump_system != system_name
                     ):
                         add_explored_info(self.nearby_systems[system_name])
+                        self.main_ui.update()
                         if self.debug_logging.get() <= 20:
                             logger.info(f"{system_name} is not known by EDSM!")
 
