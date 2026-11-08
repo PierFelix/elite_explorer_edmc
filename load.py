@@ -381,7 +381,7 @@ class EliteExplorer:
                         not system_name in self.nearby_systems
                         and self.jump_system != system_name
                     ):
-                        self.nearby_systems[entry["StarSystem"]] = {}
+                        self.nearby_systems[system_name] = {}
                         add_explored_info(self.nearby_systems[system_name])
                         self.main_ui.update()
                         if self.debug_logging.get() <= 20:
