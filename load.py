@@ -106,12 +106,10 @@ class EEMainUI(tk.Frame):
                     ]
                     if len(names) > 0:
                         for i, name in enumerate(names):
-                            tk.Label(
-                                self.list_container,
-                                text=name,
-                                fg=self.systems_list.cget("fg"),
-                                bg=self.systems_list.cget("bg"),
-                            ).grid(row=0, column=0, sticky="w").grid(
+                            tk.Label(self.list_container, text=name,
+                            fg=self.systems_list.cget("fg"),
+                            bg=self.systems_list.cget("bg"),
+                        ).grid(
                                 row=i, column=0, sticky="w"
                             )
                     else:
