@@ -17,7 +17,7 @@ MISSING = 0      # system is NOT known to Spansh
 def send_http_request(url, headers = HTTP_HEADERS, timeout: float = 30):
     return requests.get(url, headers=headers, timeout=timeout)
 
-def get_nearby_systems(system_name) -> dict:
+def get_nearby_systems_name(system_name) -> dict:
     url = f"https://www.edsm.net/api-v1/sphere-systems?radius=20&showId=1&systemName={quote_plus(system_name)}"
     res = send_http_request(url)
     if res.ok:
@@ -117,8 +117,7 @@ def gather_nearby_edsm(nearby_dict: dict, entry: dict, logger: Logger, debug_log
 
 
 def crosscheck_spansh(nearby_dict: dict, logger: Logger, debug_log: int = 30):
-    for system_name in nearby_dict:
-        subset = nearby_dict[system_name]
+    for system_name, subset in nearby_dict.items():
         if not "explored" in subset:
             try:
                 explo_status = get_exploration_status(subset["id64"])
