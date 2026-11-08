@@ -160,6 +160,19 @@ class EEMainUI(tk.Frame):
 
 class EliteExplorer:
     def __init__(self) -> None:
+        self.clear_nearby: tk.IntVar
+        self.show_partially_explored: tk.IntVar
+        self.main_ui_visible: tk.IntVar
+        self.enable_overlay: tk.IntVar
+        self.debug_logging: tk.IntVar
+
+        self.nearby_systems = {}
+        self.jump_system = ""
+
+        self.plugin_dir: str
+        self.main_ui: EEMainUI
+
+    def reload_config(self) -> None:
         self.clear_nearby = tk.IntVar(value=int(config.get_int("ee_clear_nearby")))
         self.show_partially_explored = tk.IntVar(
             value=int(config.get_int("ee_partially_explored"))
@@ -170,30 +183,22 @@ class EliteExplorer:
         self.enable_overlay = tk.IntVar(value=int(config.get_int("ee_enable_overlay")))
         self.debug_logging = tk.IntVar(value=int(config.get_int("ee_debug_logging")))
 
-        self.nearby_systems = {}
-        self.jump_system = ""
-
-        self.plugin_dir: str
-        self.main_ui: EEMainUI
-
     def on_load(self, plugin_dir: str) -> str:
         self.plugin_dir = plugin_dir
         logger.info(f'Loaded "{PLUGIN_NAME}", located at dir "{plugin_dir}"')
 
         # I don't know if there is an intended way for default config options...
-        if config.set("ee_clear_unknows", int(self.clear_nearby.get())) is None:
-            config.set("ee_clear_unknows", 1)
-        if (
-            config.set("ee_partially_explored", int(self.show_partially_explored.get()))
-            is None
-        ):
+        if config.get("ee_clear_nearby") is None:
+            config.set("ee_clear_nearby", 1)
+        if config.get("ee_partially_explored") is None:
             config.set("ee_partially_explored", 1)
-        if config.set("ee_main_ui_visible", int(self.main_ui_visible.get())) is None:
+        if config.get("ee_main_ui_visible") is None:
             config.set("ee_main_ui_visible", 1)
-        if config.set("ee_enable_overlay", int(self.enable_overlay.get())) is None:
+        if config.get("ee_enable_overlay") is None:
             config.set("ee_enable_overlay", 0)
-        if config.set("ee_debug_logging", int(self.debug_logging.get())) is None:
+        if config.get("ee_debug_logging") is None:
             config.set("ee_debug_logging", 30)
+        self.reload_config()
 
         return PLUGIN_NAME
 
@@ -306,9 +311,10 @@ class EliteExplorer:
         :param cmdr: The current ED Commander
         :param is_beta: Whether or not EDMC is currently marked as in beta mode
         """
-        config.set("ee_clear_unknows", int(self.clear_nearby.get()))
+        config.set("ee_clear_nearby", int(self.clear_nearby.get()))
         config.set("ee_partially_explored", int(self.show_partially_explored.get()))
         config.set("ee_main_ui_visible", int(self.main_ui_visible.get()))
+        self.main_ui.set_visible(int(self.main_ui_visible.get()))
         config.set("ee_enable_overlay", int(self.enable_overlay.get()))
         config.set("ee_debug_logging", int(self.debug_logging.get()))
 
@@ -334,13 +340,13 @@ class EliteExplorer:
         entry: dict,
         state: dict,
     ):
-    # TODO: Add a way to trigger the first Location/ FDSDJump if
-    # EDMC was started late (Now waits on next jump)
+        # TODO: Add a way to trigger the first Location/ FDSDJump if
+        # EDMC was started late (Now waits on next jump)
         match entry.get("event"):
             case "Location" | "FSDJump":
                 # TODO Needs a better system that checks if it is more than 20 LYs away
                 # would require calculating distance with cords...
-                if self.clear_nearby:
+                if self.clear_nearby.get():
                     self.nearby_systems.clear()
                 else:
                     # Needs a better system, probably check for all
