@@ -351,6 +351,8 @@ class EliteExplorer:
                 else:
                     # Needs a better system, probably check for all
                     # bodies scanned journal event to update list
+                    if not entry["StarSystem"] in self.nearby_systems:
+                        self.nearby_systems[entry["StarSystem"]] = {}
                     add_explored_info(
                         self.nearby_systems[entry["StarSystem"]],
                         UNKNOWNSCAN,
