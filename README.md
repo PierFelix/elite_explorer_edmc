@@ -34,7 +34,24 @@ Requires python 3, tested on version 3.14.9.
 - Some HTTP error codes are not yet handled correctly (https://github.com/PierFelix/elite_explorer_edmc/issues/3 & https://github.com/PierFelix/elite_explorer_edmc/issues/6)
 - Likely plenty more that I cannot think of right now
 
-### Description from original code:
+## License
+Elite Explorer, a tool to help find systems unknown or partially known to [EDSM](https://www.edsm.net/) and [Spansh](https://www.spansh.co.uk/).  
+Copyright (C) 2026 Pieter van Toorenenburg
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received [a copy of the GNU General Public License](./LICENSE)
+along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
+## Description from original code:
 > # Elite Explorer
 > The goal of this is to make finding unexplored systems faster and easier with the help of EDSM.
 >
