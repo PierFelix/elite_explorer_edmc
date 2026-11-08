@@ -1,4 +1,5 @@
 import json
+import time
 from logging import Logger
 
 import requests
@@ -108,7 +109,7 @@ def gather_nearby_edsm(nearby_dict: dict, entry: dict, logger: Logger, debug_log
                 nearby_dict.clear()
                 return
     
-    if StarSystem in edsm_nearby:
+    if entry["StarSystem"] in edsm_nearby:
         _ = edsm_nearby.pop(StarSystem)
     
     for system_info in edsm_nearby:
@@ -122,7 +123,7 @@ def crosscheck_spansh(nearby_dict: dict, logger: Logger, debug_log: int = 30):
         subset = nearby_dict[system_name]
         if not "explored" in subset:
             try:
-                explo_status = get_exploration_status(id64)
+                explo_status = get_exploration_status(subset["id64"])
                 explored, scannedBodies, bodyCount = exploration_state_check(explo_status)
                 add_explored_info(subset, explored, scannedBodies, bodyCount)
 
@@ -131,12 +132,10 @@ def crosscheck_spansh(nearby_dict: dict, logger: Logger, debug_log: int = 30):
                         case 0:
                             # This case (should) never trigger
                             logger.info(f"New unexplored (Spansh): {system_name}")
-                            # self.unexplored[system_name] = {}
                         case 1 | 2 | 3:
                             scanned = str(scannedBodies).rjust(3, "0") if scannedBodies else "???"
                             total = str(bodyCount).rjust(3, "0") if bodyCount else "???"
                             logger.info(f"New partially explored: [{scanned}/{total}] {system_name}")
-                            # self.partially_explored[system_name]  = {}
             
             except requests.exceptions.HTTPError as e:
                 if e.response.status_code != 404:
@@ -146,14 +145,12 @@ def crosscheck_spansh(nearby_dict: dict, logger: Logger, debug_log: int = 30):
                     if debug_log <= 20:
                         logger.info(f"{system_name} is not known by Spansh!")
                     add_explored_info(subset)
-                    # self.unexplored[system_name] = {}
     if debug_log <= 20:
         logger.info("Finished crosschecking nearby systems with Spansh")    
 
 if __name__ == "__main__":
     import glob
     import os
-    import time
 
     CLEAR_UNKNOWNS = True
     SHOW_PARTIALLY_EXPLORED = True
