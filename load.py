@@ -1,13 +1,11 @@
 import logging
 import os
-
 import tkinter as tk
-import myNotebook as nb
 
+import myNotebook as nb
 from config import appname, appversion, config
 
 from main import *
-
 
 # This could also be returned from plugin_start3()
 PLUGIN_NAME = os.path.basename(os.path.dirname(__file__))
@@ -32,6 +30,7 @@ if not logger.hasHandlers():
     logger_formatter.default_msec_format = "%s.%03d"
     logger_channel.setFormatter(logger_formatter)
     logger.addHandler(logger_channel)
+
 
 class EEMainUI(tk.Frame):
     def __init__(self, parent: tk.Frame) -> None: # , container, gridrow
@@ -86,44 +85,45 @@ class EEMainUI(tk.Frame):
 
     def update(self):
         if self.visible:
-            pass
-        pass
-
-class EliteExplorer():
+class EliteExplorer:
     def __init__(self) -> None:
-        self.clear_nearby = tk.IntVar(value=int(config.get_int('ee_clear_nearby')))
-        self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
-        self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
-        self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
-        self.debug_logging = tk.IntVar(value=int(config.get_int('ee_debug_logging')))
+        self.clear_nearby = tk.IntVar(value=int(config.get_int("ee_clear_nearby")))
+        self.show_partially_explored = tk.IntVar(
+            value=int(config.get_int("ee_partially_explored"))
+        )
+        self.main_ui_visible = tk.IntVar(
+            value=int(config.get_int("ee_main_ui_visible"))
+        )
+        self.enable_overlay = tk.IntVar(value=int(config.get_int("ee_enable_overlay")))
+        self.debug_logging = tk.IntVar(value=int(config.get_int("ee_debug_logging")))
 
-        self.unexplored = {}
         self.nearby_systems = {}
-        self.partially_explored = {}
         self.jump_system = ""
 
         self.plugin_dir: str
         self.main_ui: EEMainUI
 
-
     def on_load(self, plugin_dir: str) -> str:
         self.plugin_dir = plugin_dir
         logger.info(f'Loaded "{PLUGIN_NAME}", located at dir "{plugin_dir}"')
-        
+
         # I don't know if there is an intended way for default config options...
-        if config.set('ee_clear_unknows', int(self.clear_nearby.get())) is None:
-            config.set('ee_clear_unknows', 1) 
-        if config.set('ee_partially_explored', int(self.show_partially_explored.get())) is None:
-            config.set('ee_partially_explored', 1) 
-        if config.set('ee_main_ui_visible', int(self.main_ui_visible.get())) is None:
-            config.set('ee_main_ui_visible', 1) 
-        if config.set('ee_enable_overlay', int(self.enable_overlay.get())) is None:
-            config.set('ee_enable_overlay', 0)
-        if config.set('ee_debug_logging', int(self.debug_logging.get())) is None:
-            config.set('ee_debug_logging', 30)    
-        
+        if config.set("ee_clear_unknows", int(self.clear_nearby.get())) is None:
+            config.set("ee_clear_unknows", 1)
+        if (
+            config.set("ee_partially_explored", int(self.show_partially_explored.get()))
+            is None
+        ):
+            config.set("ee_partially_explored", 1)
+        if config.set("ee_main_ui_visible", int(self.main_ui_visible.get())) is None:
+            config.set("ee_main_ui_visible", 1)
+        if config.set("ee_enable_overlay", int(self.enable_overlay.get())) is None:
+            config.set("ee_enable_overlay", 0)
+        if config.set("ee_debug_logging", int(self.debug_logging.get())) is None:
+            config.set("ee_debug_logging", 30)
+
         return PLUGIN_NAME
-    
+
     def on_unload(self) -> None:
         """
         on_unload is called by plugin_stop below.
@@ -133,7 +133,9 @@ class EliteExplorer():
         self.on_preferences_closed("", False)  # Save our prefs
         logger.info("Stopping")
 
-    def setup_preferences(self, parent: nb.Notebook | tk.Frame, cmdr: str, is_beta: bool) -> tk.Frame | None:
+    def setup_preferences(
+        self, parent: nb.Notebook | tk.Frame, cmdr: str, is_beta: bool
+    ) -> tk.Frame | None:
         """
         setup_preferences is called by plugin_prefs below.
 
@@ -146,51 +148,78 @@ class EliteExplorer():
         """
         current_row = 0
         frame: tk.Frame = nb.Frame(parent)
-        
-        self.clear_nearby = tk.IntVar(value=int(config.get_int('ee_clear_nearby')))
-        self.show_partially_explored = tk.IntVar(value=int(config.get_int('ee_partially_explored')))
-        self.main_ui_visible = tk.IntVar(value=int(config.get_int('ee_main_ui_visible')))
-        self.enable_overlay = tk.IntVar(value=int(config.get_int('ee_enable_overlay')))
-        self.debug_logging = tk.IntVar(value=int(config.get_int('ee_debug_logging')))
+
+        self.clear_nearby = tk.IntVar(value=int(config.get_int("ee_clear_nearby")))
+        self.show_partially_explored = tk.IntVar(
+            value=int(config.get_int("ee_partially_explored"))
+        )
+        self.main_ui_visible = tk.IntVar(
+            value=int(config.get_int("ee_main_ui_visible"))
+        )
+        self.enable_overlay = tk.IntVar(value=int(config.get_int("ee_enable_overlay")))
+        self.debug_logging = tk.IntVar(value=int(config.get_int("ee_debug_logging")))
 
         # Title
-        title_label = tk.Label(frame, text="Elite Explorer Settings", font=('TkDefaultFont', 12, 'bold'))
-        title_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        title_label = tk.Label(
+            frame, text="Elite Explorer Settings", font=("TkDefaultFont", 12, "bold")
+        )
+        title_label.grid(
+            row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20)
+        )
         current_row += 1
-        
 
         # Global Settings
-        general_label = tk.Label(frame, text="Global Settings", font=('TkDefaultFont', 10, 'bold'))
-        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        general_label = tk.Label(
+            frame, text="Global Settings", font=("TkDefaultFont", 10, "bold")
+        )
+        general_label.grid(
+            row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20)
+        )
         current_row += 1
 
-        nb.Checkbutton(frame, text='Clear Nearby List', variable=self.clear_nearby).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(
+            frame, text="Clear Nearby List", variable=self.clear_nearby
+        ).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
 
-        nb.Checkbutton(frame, text='Show Partially Explored', variable=self.show_partially_explored).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(
+            frame, text="Show Partially Explored", variable=self.show_partially_explored
+        ).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
-        
-        # needs to be an option to select [NOTSET (optional), DEBUG, INFO, WARNING, ERROR, CRITICAL, NONE] 
+
+        # TODO needs to be an option to select [NOTSET (optional), DEBUG, INFO, WARNING, ERROR, CRITICAL, NONE]
         # with values [0, 10, 20, 30, 40, 50, 51] (see Logging Levels)
-        nb.Checkbutton(frame, text='Enable Debug Logging', variable=self.debug_logging).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(
+            frame, text="Enable Debug Logging", variable=self.debug_logging
+        ).grid(row=current_row, column=0, sticky="NSEW")
         current_row += 1
-        
 
         # Main UI Settings
-        general_label = tk.Label(frame, text="Main UI Settings", font=('TkDefaultFont', 10, 'bold'))
-        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        general_label = tk.Label(
+            frame, text="Main UI Settings", font=("TkDefaultFont", 10, "bold")
+        )
+        general_label.grid(
+            row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20)
+        )
         current_row += 1
 
-        nb.Checkbutton(frame, text='Show Main UI', variable=self.main_ui_visible).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(frame, text="Show Main UI", variable=self.main_ui_visible).grid(
+            row=current_row, column=0, sticky="NSEW"
+        )
         current_row += 1
-        
-        
+
         # Overlay Settings
-        general_label = tk.Label(frame, text="Overlay Settings", font=('TkDefaultFont', 10, 'bold'))
-        general_label.grid(row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20))
+        general_label = tk.Label(
+            frame, text="Overlay Settings", font=("TkDefaultFont", 10, "bold")
+        )
+        general_label.grid(
+            row=current_row, column=0, columnspan=2, sticky=tk.W, padx=10, pady=(10, 20)
+        )
         current_row += 1
 
-        nb.Checkbutton(frame, text='Enable Overlay', variable=self.enable_overlay).grid(row=current_row, column=0, sticky="NSEW")
+        nb.Checkbutton(frame, text="Enable Overlay", variable=self.enable_overlay).grid(
+            row=current_row, column=0, sticky="NSEW"
+        )
         current_row += 1
 
         return frame
@@ -204,11 +233,11 @@ class EliteExplorer():
         :param cmdr: The current ED Commander
         :param is_beta: Whether or not EDMC is currently marked as in beta mode
         """
-        config.set('ee_clear_unknows', int(self.clear_nearby.get()))
-        config.set('ee_partially_explored', int(self.show_partially_explored.get()))
-        config.set('ee_main_ui_visible', int(self.main_ui_visible.get()))
-        config.set('ee_enable_overlay', int(self.enable_overlay.get()))
-        config.set('ee_debug_logging', int(self.debug_logging.get()))
+        config.set("ee_clear_unknows", int(self.clear_nearby.get()))
+        config.set("ee_partially_explored", int(self.show_partially_explored.get()))
+        config.set("ee_main_ui_visible", int(self.main_ui_visible.get()))
+        config.set("ee_enable_overlay", int(self.enable_overlay.get()))
+        config.set("ee_debug_logging", int(self.debug_logging.get()))
 
     def setup_main_ui(self, parent: tk.Frame) -> tk.Frame:
         """
@@ -223,7 +252,15 @@ class EliteExplorer():
         self.main_ui.set_visible(self.main_ui_visible.get())
         return self.main_ui
 
-    def journal_event(self, cmdrname: str, is_beta: bool, system: str, station: str, entry: dict, state: dict):
+    def journal_event(
+        self,
+        cmdrname: str,
+        is_beta: bool,
+        system: str,
+        station: str,
+        entry: dict,
+        state: dict,
+    ):
         match entry.get("event"):
             case "Location" | "FSDJump":
                 # TODO Needs a better system that checks if it is more than 20 LYs away
@@ -233,17 +270,33 @@ class EliteExplorer():
                 else:
                     # Needs a better system, probably check for all
                     # bodies scanned journal event to update list
-                    add_explored_info(self.nearby_systems[entry["StarSystem"]], UNKNOWNSCAN, scannedBodies=1)
-                
-                gather_nearby_edsm(self.nearby_systems, entry, logger=logger, debug_log=self.debug_logging.get())
+                    add_explored_info(
+                        self.nearby_systems[entry["StarSystem"]],
+                        UNKNOWNSCAN,
+                        scannedBodies=1,
+                    )
+
+                gather_nearby_edsm(
+                    self.nearby_systems,
+                    entry,
+                    logger=logger,
+                    debug_log=self.debug_logging.get(),
+                )
 
                 if self.show_partially_explored:
-                    crosscheck_spansh(self.nearby_systems, logger=logger, debug_log=self.debug_logging.get()) 
-                    
+                    crosscheck_spansh(
+                        self.nearby_systems,
+                        logger=logger,
+                        debug_log=self.debug_logging.get(),
+                    )
+
             case "FSDTarget":
                 if self.nearby_systems:
                     system_name = entry["Name"]
-                    if not system_name in self.nearby_systems and not self.jump_system == system_name:
+                    if (
+                        not system_name in self.nearby_systems
+                        and self.jump_system != system_name
+                    ):
                         add_explored_info(self.nearby_systems[system_name])
                         if self.debug_logging.get() <= 20:
                             logger.info(f"{system_name} is not known by EDSM!")
@@ -260,20 +313,41 @@ class EliteExplorer():
                         # Opening Powerplay or Galnet News
                         case "GalacticPowers":
                             logger.info("Fully Unexplored Systems:")
-                            for k in [sys for sys, v in self.nearby_systems.items() if v.get("explored") in [MISSING]]:
+                            for k in [
+                                sys
+                                for sys, v in self.nearby_systems.items()
+                                if v.get("explored") in [MISSING]
+                            ]:
                                 logger.info(f"{k}")
 
                         # Opening Codex
                         case "Codex":
                             logger.info("Partially Explored Systems:")
                             if self.show_partially_explored:
-                                for k in [sys for sys, v in self.nearby_systems.items() if v.get("explored") in [LOGGED, UNKNOWNSCAN, PARTIALSCAN]]:
-                                    scanned = str(self.nearby_systems[k]["scannedBodies"]).rjust(3, "0") if self.nearby_systems[k]["scannedBodies"] else "???"
-                                    total = str(self.nearby_systems[k]["bodyCount"]).rjust(3, "0") if self.nearby_systems[k]["bodyCount"] else "???"
+                                for k in [
+                                    sys
+                                    for sys, v in self.nearby_systems.items()
+                                    if v.get("explored")
+                                    in [LOGGED, UNKNOWNSCAN, PARTIALSCAN]
+                                ]:
+                                    scanned = (
+                                        str(
+                                            self.nearby_systems[k]["scannedBodies"]
+                                        ).rjust(3, "0")
+                                        if self.nearby_systems[k]["scannedBodies"]
+                                        else "???"
+                                    )
+                                    total = (
+                                        str(self.nearby_systems[k]["bodyCount"]).rjust(
+                                            3, "0"
+                                        )
+                                        if self.nearby_systems[k]["bodyCount"]
+                                        else "???"
+                                    )
                                     logger.info(f"[{scanned}/{total}] {k}")
                             else:
                                 logger.info("Checking partially explored is disabled!")
-                            
+
                         case _:
                             pass
             case _:
@@ -281,6 +355,7 @@ class EliteExplorer():
 
 
 ee = EliteExplorer()
+
 
 def plugin_start3(plugin_dir: str) -> str:
     """
@@ -290,6 +365,7 @@ def plugin_start3(plugin_dir: str) -> str:
     """
     return ee.on_load(plugin_dir)
 
+
 def plugin_stop() -> None:
     """
     Handle shutdown of the plugin.
@@ -297,6 +373,7 @@ def plugin_stop() -> None:
     See PLUGINS.md#shutdown
     """
     return ee.on_unload()
+
 
 def plugin_prefs(parent: nb.Notebook, cmdr: str, is_beta: bool) -> nb.Frame | None:
     """
@@ -324,7 +401,10 @@ def plugin_app(parent: tk.Frame) -> tk.Frame | None:
     """
     return ee.setup_main_ui(parent)
 
-def journal_entry(cmdrname: str, is_beta: bool, system: str, station: str, entry: dict, state: dict) -> None:
+
+def journal_entry(
+    cmdrname: str, is_beta: bool, system: str, station: str, entry: dict, state: dict
+) -> None:
     """
     Handle the given journal entry.
 
